@@ -1,9 +1,10 @@
 """Intent classification. Rule-based by default, optional LLM hook off by default."""
 
 import re
+from functools import lru_cache
 from typing import Callable, Optional
 
-from .models import Intent
+from .models import BusinessProfile, Intent
 
 _KEYWORDS = {
     Intent.BOOKING: [
@@ -70,17 +71,22 @@ def extract_name(text: str) -> Optional[str]:
     return name.title() if name else None
 
 
-def extract_details(text: str, intent: str) -> dict:
-    """Pull the facts each intent needs out of the caller text."""
+def extract_details(text: str, intent: str, business: Optional[BusinessProfile] = None) -> dict:
+    """Pull the facts each intent needs out of the caller text.
+
+    Services are matched against the business profile, so an agency
+    configuring a salon extracts "haircut" and a clinic extracts
+    "cleaning". Without a business, the original dental service list
+    is used so direct callers keep the old behaviour.
+    """
     lowered = text.lower()
     details: dict = {}
 
-    service_match = re.search(
-        r"\b(checkup|check-up|cleaning|filling|whitening|extraction|braces|consultation)\b",
-        lowered,
-    )
+    service_match = _service_pattern(
+        tuple(business.services) if business is not None else None
+    ).search(lowered)
     if service_match:
-        details["service"] = service_match.group(1).replace("check-up", "checkup")
+        details["service"] = _canonical_service(service_match.group(0), business)
 
     day_match = re.search(
         r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow)\b",
@@ -115,3 +121,34 @@ def missing_details(intent: str, details: dict) -> list:
 def strip_filler(text: str) -> str:
     words = [w for w in text.split() if w.lower().strip(".,!?") not in _FILLER]
     return " ".join(words)
+
+
+_LEGACY_SERVICES = (
+    "checkup", "check-up", "cleaning", "filling", "whitening",
+    "extraction", "braces", "consultation",
+)
+
+
+@lru_cache(maxsize=32)
+def _service_pattern(services: Optional[tuple] = None):
+    """Compiled service matcher for one business profile.
+
+    Services are longest first so a multi-word service such as
+    "root canal" matches before a shorter one. The pattern is cached
+    per service list so repeated calls do not rebuild it.
+    """
+    if services is None:
+        services = _LEGACY_SERVICES
+    ordered = sorted(services, key=len, reverse=True)
+    joined = "|".join(re.escape(service) for service in ordered)
+    return re.compile(rf"(?<![A-Za-z])(?:{joined})(?![A-Za-z])", re.IGNORECASE)
+
+
+def _canonical_service(matched: str, business: Optional[BusinessProfile]) -> str:
+    """Return the service name exactly as the business lists it."""
+    if business is None:
+        return matched.lower().replace("check-up", "checkup")
+    for service in business.services:
+        if service.lower() == matched.lower():
+            return service
+    return matched.lower()

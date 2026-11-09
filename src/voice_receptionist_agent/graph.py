@@ -2,14 +2,18 @@
 
 Flow: greet -> classify -> collect -> route -> draft.
 Each node reads and writes the shared call state.
-"""
 
-from langgraph.graph import END, StateGraph
+The compiled graph is built once per process and reused for every
+call. Rebuilding it on every call wasted about half the per-call time
+and bought nothing, since the graph has no per-call state.
+"""
 
 from .intents import classify_intent, extract_details, extract_name, missing_details
 from .models import BusinessProfile, CallState
 from .replies import draft_reply, greeting
 from .router import route_for
+
+_COMPILED_APP = None
 
 
 def _greet(state: CallState) -> CallState:
@@ -28,7 +32,9 @@ def _classify(state: CallState) -> CallState:
 def _collect(state: CallState) -> CallState:
     text = " ".join(state.get("caller_turns", []))
     state["caller_name"] = extract_name(text)
-    state["details"] = extract_details(text, state["intent"])
+    state["details"] = extract_details(
+        text, state["intent"], state.get("business")
+    )
     state["missing"] = missing_details(state["intent"], state["details"])
     return state
 
@@ -53,7 +59,17 @@ def _draft(state: CallState) -> CallState:
 
 
 def build_graph():
-    """Build and compile the receptionist call flow graph."""
+    """Build the receptionist call flow graph, once, and reuse it.
+
+    The langgraph import happens here, not at module import, so code
+    that only needs the classifier, the config loader, or the replies
+    does not pay the langgraph import cost.
+    """
+    global _COMPILED_APP
+    if _COMPILED_APP is not None:
+        return _COMPILED_APP
+    from langgraph.graph import END, StateGraph
+
     graph = StateGraph(CallState)
     graph.add_node("greet", _greet)
     graph.add_node("classify", _classify)
@@ -66,7 +82,8 @@ def build_graph():
     graph.add_edge("collect", "route")
     graph.add_edge("route", "draft")
     graph.add_edge("draft", END)
-    return graph.compile()
+    _COMPILED_APP = graph.compile()
+    return _COMPILED_APP
 
 
 def handle_call(caller_turns, business=None, llm_hook=None) -> CallState:
