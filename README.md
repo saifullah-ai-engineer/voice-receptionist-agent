@@ -97,11 +97,35 @@ Measured locally on this machine, before and after the 0.2.0 upgrade.
 |---|---|---|
 | Call handling, steady state (100 calls) | 4.9 ms mean | 1.9 ms mean |
 | Package import time | 0.87 s | 0.04 s |
-| Test suite | 20 tests in 0.84 s | 45 tests in 0.40 s |
+| Test suite | 20 tests in 0.84 s | 47 tests in 0.52 s |
 | Intent classification | 0.004 ms per call | 0.004 ms per call, unchanged |
 | Demo run | about 1.05 s | about 1.0 s, unchanged |
 
 What changed: the compiled LangGraph is now built once and reused instead of rebuilt on every call, the langgraph import is deferred until the first call, and the service matcher is compiled once per business and cached. The classifier was already fast and was left alone. The demo time barely moved because it was already dominated by one import, which is now deferred.
+
+## Stress test
+
+Measured locally on this machine with 10,000 real calls, no live service involved.
+
+| Measure | Result |
+|---|---|
+| Sustained load, 1 thread, 10,000 calls | 1.9 ms mean, 2.3 ms p95, 3.0 ms p99, 526 calls per second, 0 errors |
+| Same input at call 1 and call 10,000 | Identical output, 0 mismatches |
+| Memory over 10,000 calls | RSS grew 0.3 MB, no leak |
+| 4 threads, 10,000 calls | 466 calls per second, slower than 1 thread; threads do not help, the work is CPU-bound Python, use processes instead |
+| 4 processes, 10,000 calls | 682 calls per second on a 1.5 CPU machine |
+| Business with 100 services | 8.6 ms mean per call, longest match still wins |
+| Business with 1,000 services | 10.7 ms mean per call, longest match still wins; a new 1,000-service list costs about 200 ms once to compile the matcher, then it is cached |
+| 5,000 character caller message | 10 ms, intent still correct |
+| Empty message, whitespace only, empty call | Handled, routes to a human with a polite reply, no crash |
+| 20-turn conversation | Transcript grows linearly, 839 characters for 20 turns, no unbounded growth |
+| Malformed configs under load | All 9 bad configs fail with a clear named error in about 0.2 ms; the agent keeps answering correctly between them |
+| Voice hook with a missing script | Fails loudly in 0.2 ms, 100 calls in 5 ms total, never hangs |
+
+## What changed in 0.2.1
+
+- Fixed a real stress-test finding: a clarify reply listed every service the business offers, so a business with 1,000 services got a 14,060 character reply read aloud. The reply now names the first 8 services and says how many more there are. Small businesses see no change.
+- 2 new tests, 47 in total.
 
 ## What changed in 0.2.0
 
@@ -125,7 +149,7 @@ What changed: the compiled LangGraph is now built once and reused instead of reb
 PYTHONPATH=src .venv/bin/python -m pytest tests/ -q
 ```
 
-45 tests cover each intent, the LLM hook and its fallback, name and detail extraction, missing details, routing, full end-to-end calls, a custom business profile, config loading and every validation error, the graph being built once, multi-word services, and the voice stub plus the Sopro wiring with a fake script.
+47 tests cover each intent, the LLM hook and its fallback, name and detail extraction, missing details, routing, full end-to-end calls, a custom business profile, config loading and every validation error, the graph being built once, multi-word services, the voice stub plus the Sopro wiring with a fake script, and the clarify reply cap for long service lists.
 
 ## Contributing
 
