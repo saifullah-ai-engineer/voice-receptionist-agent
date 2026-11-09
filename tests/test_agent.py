@@ -152,3 +152,28 @@ def test_multi_word_service_from_profile():
 def test_extract_details_without_business_keeps_old_behaviour():
     details = extract_details("I want to book a cleaning on Saturday", Intent.BOOKING)
     assert details["service"] == "cleaning"
+
+
+def test_clarify_reply_caps_a_long_service_list():
+    business = BusinessProfile(
+        name="Big Business",
+        services=[f"service {i:04d}" for i in range(100)],
+    )
+    result = handle_call(["I want to book an appointment on Friday"], business=business)
+    assert result["route"] == Route.CLARIFY
+    assert "service 0000" in result["reply"]
+    assert "service 0007" in result["reply"]
+    assert "service 0008" not in result["reply"]
+    assert "and 92 more" in result["reply"]
+    assert len(result["reply"]) < 500
+
+
+def test_clarify_reply_lists_every_service_for_a_small_business():
+    business = BusinessProfile(
+        name="Small Salon",
+        services=["haircut", "colouring", "styling"],
+    )
+    result = handle_call(["I want to book an appointment on Friday"], business=business)
+    assert result["route"] == Route.CLARIFY
+    assert "haircut, colouring, styling" in result["reply"]
+    assert "more" not in result["reply"]
