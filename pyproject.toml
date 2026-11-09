@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-receptionist-agent"
-version = "0.2.1"
+version = "0.2.2"
 description = "A voice receptionist agent for small businesses. Greets callers, understands intent, routes calls, and drafts replies."
 readme = "README.md"
 requires-python = ">=3.10"

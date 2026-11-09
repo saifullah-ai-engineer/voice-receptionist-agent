@@ -192,6 +192,13 @@ Measured locally on this machine with 10,000 real calls, no live service involve
 | Malformed configs under load | All 9 bad configs fail with a clear named error in about 0.2 ms; the agent keeps answering correctly between them |
 | Voice hook with a missing script | Fails loudly in 0.2 ms, 100 calls in 5 ms total, never hangs |
 
+## What changed in 0.2.2
+
+- Security hardening: the voice hook now passes the reply after a `--` separator so a reply starting with a dash cannot be parsed as a flag, output paths are validated against symlinks, a non-executable voice script fails with a clear error, and config files, services, and caller turns all have size caps.
+- Caller privacy: a new `--quiet` flag prints only the outcome, so the caller transcript no longer goes to the console.
+- Optional authentication: when `VRA_API_TOKEN` is set, the CLI needs `--token` with the same value, checked in constant time, before any work is done. Off by default.
+- 20 new security tests, 67 in total.
+
 ## What changed in 0.2.1
 
 - Fixed a real stress-test finding: a clarify reply listed every service the business offers, so a business with 1,000 services got a 14,060 character reply read aloud. The reply now names the first 8 services and says how many more there are. Small businesses see no change.
