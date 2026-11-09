@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>voice-receptionist-agent architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1600px; height: 900px; overflow: hidden;
+    background: #0d1526; color: #e8eefc;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .wrap { width: 1600px; height: 900px; padding: 36px 56px; }
+  header { margin-bottom: 24px; }
+  .eyebrow { font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #2dd4bf; margin-bottom: 8px; }
+  h1 { font-size: 32px; font-weight: bold; margin-bottom: 8px; }
+  header p { font-size: 16px; color: #93a4c4; }
+  .cols { display: flex; gap: 0; }
+  .col { width: 456px; flex: none; }
+  .col h2 {
+    font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #7e8fb0;
+    margin-bottom: 14px;
+  }
+  .col h2 b { color: #2dd4bf; }
+  .card {
+    background: #16213a; border: 1px solid #2a3a5c; border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .card.hot { border: 2px solid #2dd4bf; }
+  .card .tag {
+    display: inline-block; font-size: 11px; font-weight: bold; letter-spacing: 1px;
+    padding: 3px 9px; border-radius: 12px; margin-bottom: 8px;
+    background: #0f2a26; color: #2dd4bf;
+  }
+  .card .tag.warn { background: #2a2110; color: #e8b93f; }
+  .card .tag.blue { background: #152a4d; color: #7fb0f5; }
+  .card h3 { font-size: 16.5px; font-weight: bold; margin-bottom: 6px; }
+  .card h3 code { font-size: 15px; color: #2dd4bf; }
+  .card p { font-size: 13.5px; line-height: 1.55; color: #93a4c4; }
+  .card p code { font-size: 12.5px; color: #c7d3ea; background: #0d1526; padding: 1px 5px; border-radius: 4px; }
+  .cmd {
+    margin-top: 10px; background: #0d1526; border: 1px solid #22304f; border-radius: 8px;
+    padding: 9px 12px; font-family: "Courier New", Courier, monospace;
+    font-size: 12.5px; color: #2dd4bf; white-space: nowrap; overflow: hidden;
+  }
+  .gap { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .gap .arr { color: #2dd4bf; font-size: 30px; font-weight: bold; }
+  .facts {
+    display: flex; gap: 16px; margin-top: 10px;
+  }
+  .fact {
+    flex: 1; background: #16213a; border: 1px solid #2a3a5c; border-radius: 12px;
+    padding: 14px 18px; text-align: center;
+  }
+  .fact .n { font-size: 22px; font-weight: bold; color: #2dd4bf; margin-bottom: 3px; }
+  .fact .l { font-size: 12.5px; color: #7e8fb0; }
+  .foot { margin-top: 18px; font-size: 14px; color: #7e8fb0; text-align: center; }
+  .foot b { color: #2dd4bf; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">HOW IT FITS TOGETHER</div>
+    <h1>From a call to a reply</h1>
+    <p>One config file drives the whole agent. Text works out of the box, no paid API, no phone line.</p>
+  </header>
+  <div class="cols">
+    <div class="col">
+      <h2><b>01</b> &nbsp;CALLER</h2>
+      <div class="card">
+        <div class="tag warn">INTEGRATION POINT</div>
+        <h3>Phone line</h3>
+        <p>A telephony provider (for example Twilio) puts speech-to-text in front of the agent. Not included in this repo.</p>
+      </div>
+      <div class="card">
+        <div class="tag">WORKS TODAY</div>
+        <h3>Text input</h3>
+        <p>CLI call or demo, no phone line needed.</p>
+        <div class="cmd">python -m voice_receptionist_agent "..."</div>
+      </div>
+    </div>
+    <div class="gap"><div class="arr">&#8594;</div></div>
+    <div class="col">
+      <h2><b>02</b> &nbsp;AGENT, THIS REPO</h2>
+      <div class="card hot">
+        <div class="tag">CONFIG</div>
+        <h3><code>business.json</code></h3>
+        <p>One file: name, services, hours, price note, handoff message, phone. Strict validation, a bad file fails with a named error.</p>
+      </div>
+      <div class="card">
+        <div class="tag">LANGGRAPH</div>
+        <h3>StateGraph, five nodes</h3>
+        <p>greet, classify, collect, route, draft. Compiled once per process, reused for every call.</p>
+      </div>
+      <div class="card">
+        <div class="tag">CLASSIFIER</div>
+        <h3>Rule-based, optional LLM hook</h3>
+        <p>Keyword scores, longest service match first. If the hook fails or answers something unknown, the rules take over.</p>
+      </div>
+      <div class="card">
+        <div class="tag">REPLY WRITER</div>
+        <h3><code>replies.py</code></h3>
+        <p>Drafts from business facts and caller words only. It never invents a price, hours, or availability.</p>
+      </div>
+    </div>
+    <div class="gap"><div class="arr">&#8594;</div></div>
+    <div class="col">
+      <h2><b>03</b> &nbsp;OUTPUTS</h2>
+      <div class="card">
+        <div class="tag">TEXT</div>
+        <h3><code>reply.txt</code></h3>
+        <p>Reply text saved for a voice service to speak.</p>
+      </div>
+      <div class="card">
+        <div class="tag blue">VOICE, WHEN ASKED</div>
+        <h3><code>reply.wav</code></h3>
+        <p>Sopro TTS v2-turbo through voice-clone-pipeline, when <code>--speak</code> is passed. CPU render, tens of seconds per reply.</p>
+      </div>
+      <div class="card">
+        <div class="tag">HUMAN</div>
+        <h3>Handoff to a human</h3>
+        <p>Caller is connected to a team member, with the business phone number.</p>
+      </div>
+    </div>
+  </div>
+  <div class="facts">
+    <div class="fact"><div class="n">1.9 ms</div><div class="l">mean per call, steady state</div></div>
+    <div class="fact"><div class="n">47 tests</div><div class="l">passing, 0.52 s total</div></div>
+    <div class="fact"><div class="n">1 file</div><div class="l">configures a whole new business</div></div>
+    <div class="fact"><div class="n">0</div><div class="l">paid APIs needed for the demo</div></div>
+  </div>
+  <div class="foot">The phone line needs a telephony provider account and a number. <b>Everything else runs locally.</b></div>
+</div>
+</body>
+</html>

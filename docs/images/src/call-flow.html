@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>voice-receptionist-agent call flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 800px; overflow: hidden;
+    background: #0d1526; color: #e8eefc;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .wrap { width: 1200px; height: 800px; padding: 36px 48px; }
+  header { margin-bottom: 22px; }
+  .eyebrow { font-size: 13px; font-weight: bold; letter-spacing: 2px; color: #2dd4bf; margin-bottom: 8px; }
+  h1 { font-size: 32px; font-weight: bold; margin-bottom: 8px; }
+  header p { font-size: 16px; color: #93a4c4; }
+  .flow { display: flex; align-items: stretch; margin-bottom: 26px; }
+  .node {
+    width: 196px; flex: none; background: #16213a; border: 1px solid #2a3a5c;
+    border-radius: 12px; padding: 16px 16px 14px;
+  }
+  .node.hot { border: 2px solid #2dd4bf; }
+  .node .num {
+    width: 26px; height: 26px; border-radius: 7px; margin-bottom: 9px;
+    background: #0f2a26; color: #2dd4bf; font-size: 13px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .node h2 { font-size: 17px; font-weight: bold; margin-bottom: 6px; }
+  .node p { font-size: 12.5px; line-height: 1.5; color: #93a4c4; }
+  .arrow {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: #2dd4bf; font-size: 26px; font-weight: bold;
+  }
+  .panels { display: flex; gap: 24px; margin-bottom: 26px; }
+  .panel {
+    flex: 1; background: #16213a; border: 1px solid #2a3a5c;
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .panel h2 { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+  .panel .sub { font-size: 13px; color: #7e8fb0; margin-bottom: 12px; }
+  .row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-top: 1px solid #22304f; }
+  .pill {
+    flex: none; font-size: 12.5px; font-weight: bold; padding: 4px 10px;
+    border-radius: 16px; background: #0f2a26; color: #2dd4bf;
+  }
+  .pill.blue { background: #152a4d; color: #7fb0f5; }
+  .row span { font-size: 13px; line-height: 1.45; color: #c7d3ea; }
+  .foot { font-size: 14px; color: #7e8fb0; text-align: center; }
+  .foot b { color: #2dd4bf; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">LANGGRAPH CALL FLOW</div>
+    <h1>Five nodes, one call</h1>
+    <p>The compiled graph is built once per process and reused for every call.</p>
+  </header>
+  <div class="flow">
+    <div class="node">
+      <div class="num">1</div>
+      <h2>Greet</h2>
+      <p>Greets the caller with the business name from business.json.</p>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="node hot">
+      <div class="num">2</div>
+      <h2>Classify</h2>
+      <p>Rule-based intent classifier, with an optional LLM hook and rule fallback.</p>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="node">
+      <div class="num">3</div>
+      <h2>Collect</h2>
+      <p>Pulls name, service, day, and time from the caller words, and checks what is missing.</p>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="node">
+      <div class="num">4</div>
+      <h2>Route</h2>
+      <p>Decides book, answer, clarify, or hand off to a human.</p>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="node">
+      <div class="num">5</div>
+      <h2>Draft</h2>
+      <p>Drafts the reply using only business facts and the caller words.</p>
+    </div>
+  </div>
+  <div class="panels">
+    <div class="panel">
+      <h2>Classify splits into five intents</h2>
+      <div class="sub">Keyword scores, phrases count double. No match means other.</div>
+      <div class="row"><span class="pill">booking</span><span>Book a service, an appointment, a slot.</span></div>
+      <div class="row"><span class="pill">pricing</span><span>Ask what a service costs.</span></div>
+      <div class="row"><span class="pill">hours</span><span>Ask when the business opens and closes.</span></div>
+      <div class="row"><span class="pill">human_handoff</span><span>Talk to a real person, a refund, a complaint.</span></div>
+      <div class="row"><span class="pill">other</span><span>Anything else, handed to a human.</span></div>
+    </div>
+    <div class="panel">
+      <h2>Route decides the outcome</h2>
+      <div class="sub">Based on intent and the details still missing.</div>
+      <div class="row"><span class="pill blue">book</span><span>Slot noted, the team calls back to confirm.</span></div>
+      <div class="row"><span class="pill blue">answer</span><span>Answered from the business facts.</span></div>
+      <div class="row"><span class="pill blue">clarify</span><span>Asks for the missing service or day.</span></div>
+      <div class="row"><span class="pill blue">human</span><span>Connected to a team member, with the phone number.</span></div>
+    </div>
+  </div>
+  <div class="foot">The classifier never invents a price. It only states the facts in business.json. <b>1.9 ms mean per call.</b></div>
+</div>
+</body>
+</html>
