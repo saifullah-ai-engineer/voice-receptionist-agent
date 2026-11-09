@@ -34,6 +34,11 @@ def classify_intent(text: str, llm_hook: Optional[Callable[[str], str]] = None) 
 
     If an llm_hook is given it is tried first. Any failure or an
     unrecognised answer falls back to the rule-based classifier.
+
+    The hook receives the raw caller text, so only use a hook you
+    trust: it must not log, store, or send the caller text anywhere
+    except to the model call it exists for, and it must never return
+    a secret or a credential as its answer.
     """
     if llm_hook is not None:
         try:

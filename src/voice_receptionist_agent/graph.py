@@ -12,6 +12,7 @@ from .intents import classify_intent, extract_details, extract_name, missing_det
 from .models import BusinessProfile, CallState
 from .replies import draft_reply, greeting
 from .router import route_for
+from .security import MAX_CALLER_TURN_CHARS
 
 _COMPILED_APP = None
 
@@ -87,10 +88,27 @@ def build_graph():
 
 
 def handle_call(caller_turns, business=None, llm_hook=None) -> CallState:
-    """Run one simulated call through the graph and return the final state."""
+    """Run one simulated call through the graph and return the final state.
+
+    Each caller turn must be text of at most MAX_CALLER_TURN_CHARS
+    characters, so one huge turn cannot exhaust memory or slow the
+    matcher to a crawl.
+    """
+    turns = list(caller_turns)
+    for index, turn in enumerate(turns):
+        if not isinstance(turn, str):
+            raise ValueError(
+                f"Caller turn {index} must be text, but it is a "
+                f"{type(turn).__name__}."
+            )
+        if len(turn) > MAX_CALLER_TURN_CHARS:
+            raise ValueError(
+                f"Caller turn {index} is longer than "
+                f"{MAX_CALLER_TURN_CHARS} characters."
+            )
     app = build_graph()
     result = app.invoke({
-        "caller_turns": list(caller_turns),
+        "caller_turns": turns,
         "business": business or BusinessProfile(),
         "llm_hook": llm_hook,
     })

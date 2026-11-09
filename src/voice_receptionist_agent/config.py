@@ -17,6 +17,12 @@ from pathlib import Path
 from typing import Any, Dict
 
 from .models import BusinessProfile
+from .security import (
+    MAX_CONFIG_BYTES,
+    MAX_FIELD_CHARS,
+    MAX_SERVICE_CHARS,
+    MAX_SERVICES,
+)
 
 _FIELDS = {
     "name": str,
@@ -38,6 +44,12 @@ def load_business_profile(path: str | Path) -> BusinessProfile:
             f"Business config not found: {target}. "
             "Copy business.example.json to business.json and fill it in, "
             "or pass --config with the path to your config file."
+        )
+    if target.stat().st_size > MAX_CONFIG_BYTES:
+        raise ValueError(
+            f"Business config {target} is larger than "
+            f"{MAX_CONFIG_BYTES} bytes. A business config is a small "
+            "JSON file; check that you pointed --config at the right file."
         )
     try:
         data = json.loads(target.read_text(encoding="utf-8"))
@@ -80,11 +92,21 @@ def business_profile_from_dict(data: Dict[str, Any], source: str = "config") -> 
             raise ValueError(
                 f"Business config {source}: field '{field}' must not be empty."
             )
+        if kind is str and len(value) > MAX_FIELD_CHARS[field]:
+            raise ValueError(
+                f"Business config {source}: field '{field}' is longer than "
+                f"{MAX_FIELD_CHARS[field]} characters."
+            )
     services = data["services"]
     if not services:
         raise ValueError(
             f"Business config {source}: field 'services' must list at least "
             "one service the business offers."
+        )
+    if len(services) > MAX_SERVICES:
+        raise ValueError(
+            f"Business config {source}: field 'services' lists more than "
+            f"{MAX_SERVICES} services."
         )
     cleaned = []
     for service in services:
@@ -92,6 +114,11 @@ def business_profile_from_dict(data: Dict[str, Any], source: str = "config") -> 
             raise ValueError(
                 f"Business config {source}: every service must be a "
                 "non-empty string."
+            )
+        if len(service.strip()) > MAX_SERVICE_CHARS:
+            raise ValueError(
+                f"Business config {source}: service names must be no "
+                f"longer than {MAX_SERVICE_CHARS} characters."
             )
         cleaned.append(service.strip())
     lowered = [service.lower() for service in cleaned]

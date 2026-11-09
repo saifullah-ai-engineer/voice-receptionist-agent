@@ -19,13 +19,20 @@ service is called unless you ask for it with speak_audio or the
 --speak flag.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
+from .security import validate_output_path
+
 
 def write_reply_to_file(reply: str, path: str | Path) -> Path:
-    """Write the reply text to a file for a voice service to speak."""
-    target = Path(path)
+    """Write the reply text to a file for a voice service to speak.
+
+    The path is checked first: it must not run through a symlink and
+    must not be a directory or other non-regular file.
+    """
+    target = validate_output_path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(reply, encoding="utf-8")
     return target
@@ -53,17 +60,24 @@ def speak_audio(
             "Use the voice-clone-pipeline scripts/synthesize.sh, or leave "
             "voice off and the reply stays as text."
         )
+    if not os.access(script, os.X_OK):
+        raise ValueError(
+            f"Voice synthesize script is not executable: {script}. "
+            "Point --synth-script at an executable script you trust."
+        )
     ref = Path(voice_ref)
     if not ref.is_file():
         raise FileNotFoundError(
             f"Voice reference audio not found: {ref}. "
             "Record 5 to 20 seconds of the business voice and pass its path."
         )
-    out = Path(output_path)
+    out = validate_output_path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
         result = subprocess.run(
-            [str(script), "--ref", str(ref), "--out", str(out), reply],
+            # The "--" keeps a reply that starts with a dash from being
+            # parsed as a flag by the synthesize program.
+            [str(script), "--ref", str(ref), "--out", str(out), "--", reply],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -72,6 +86,10 @@ def speak_audio(
         raise RuntimeError(
             f"Voice synthesis timed out after {timeout} seconds. "
             "Try a shorter reply or a faster machine."
+        ) from exc
+    except OSError as exc:
+        raise RuntimeError(
+            f"Voice synthesis could not start: {exc}."
         ) from exc
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip().splitlines()
