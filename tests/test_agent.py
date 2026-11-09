@@ -123,3 +123,32 @@ def test_draft_reply_never_invents_a_price():
     business = BusinessProfile()
     reply = draft_reply(Intent.OTHER, Route.HUMAN, {}, [], None, business)
     assert "2,000" not in reply and "3,500" not in reply
+
+
+def test_graph_is_built_once_and_reused():
+    from voice_receptionist_agent.graph import build_graph
+
+    assert build_graph() is build_graph()
+
+
+def test_repeated_calls_stay_fast_and_consistent():
+    first = handle_call(["How much does a checkup cost?"])
+    second = handle_call(["How much does a checkup cost?"])
+    assert first["reply"] == second["reply"]
+    assert first["intent"] == second["intent"]
+
+
+def test_multi_word_service_from_profile():
+    from voice_receptionist_agent.intents import extract_details
+
+    business = BusinessProfile(
+        name="Smile Clinic",
+        services=["root canal", "cleaning"],
+    )
+    details = extract_details("I want to book a root canal on Monday", Intent.BOOKING, business)
+    assert details["service"] == "root canal"
+
+
+def test_extract_details_without_business_keeps_old_behaviour():
+    details = extract_details("I want to book a cleaning on Saturday", Intent.BOOKING)
+    assert details["service"] == "cleaning"
