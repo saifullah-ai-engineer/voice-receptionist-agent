@@ -4,6 +4,8 @@ __pycache__/
 venv/
 .pytest_cache/
 reply.txt
+reply.wav
+business.json
 *.wav
 *.mp3
 .env

@@ -1,0 +1,13 @@
+{
+  "name": "Bright Smile Dental Clinic",
+  "services": [
+    "checkup",
+    "cleaning",
+    "filling",
+    "whitening"
+  ],
+  "hours": "Monday to Saturday, 9am to 6pm",
+  "price_note": "A checkup is 2,000 PKR and a cleaning is 3,500 PKR. Exact prices depend on the treatment.",
+  "handoff_message": "I will connect you with a member of our team.",
+  "phone": "+92 300 0000000"
+}
