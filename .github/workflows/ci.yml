@@ -17,3 +17,11 @@ jobs:
       - run: pip install -e . pytest
       - run: python -m pytest tests/ -q
       - run: python examples/demo.py
+      - run: python examples/demo.py --config business.example.json
+      - run: python -m voice_receptionist_agent --config business.example.json "Hi, I want to book a cleaning on Saturday at 10am"
+      - name: Check for placeholder text
+        run: |
+          if grep -RInE 'your-username|<YOUR_[A-Z_]+>|lorem ipsum' README.md src examples CONTRIBUTING.md SECURITY.md; then
+            echo "Placeholder text found. Replace it with real values before merging."
+            exit 1
+          fi
