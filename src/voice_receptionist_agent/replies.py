@@ -2,6 +2,19 @@
 
 from .models import BusinessProfile, Intent, Route
 
+# A clarify reply is spoken aloud, so it must stay short. A business
+# with 100 services must not get a reply that lists all 100.
+_MAX_SERVICES_LISTED = 8
+
+
+def _service_list(business: BusinessProfile) -> str:
+    """Services named in a reply, capped so the reply stays speakable."""
+    services = business.services
+    if len(services) <= _MAX_SERVICES_LISTED:
+        return ", ".join(services)
+    shown = ", ".join(services[:_MAX_SERVICES_LISTED])
+    return f"{shown}, and {len(services) - _MAX_SERVICES_LISTED} more"
+
 
 def greeting(business: BusinessProfile) -> str:
     return (
@@ -31,12 +44,12 @@ def draft_reply(intent: str, route: str, details: dict, missing: list,
             return (
                 f"Happy to help{name}. Which service would you like to book, "
                 f"and which day works for you? Our services are "
-                f"{', '.join(business.services)}."
+                f"{_service_list(business)}."
             )
         if "service" in missing:
             return (
                 f"Happy to help{name}. Which service is this about? "
-                f"Our services are {', '.join(business.services)}."
+                f"Our services are {_service_list(business)}."
             )
         if "day" in missing:
             service = details.get("service", "appointment")
