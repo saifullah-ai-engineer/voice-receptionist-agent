@@ -6,6 +6,10 @@ An agency configures it for a client business by editing one file, `business.jso
 
 It is built on Saif's voice work: the reply text plugs into the [voice-clone-pipeline](https://github.com/saifullah-ai-engineer/voice-clone-pipeline) for speech output in the business's own cloned voice, and the wiring is real, not a stub.
 
+![Voice receptionist agent hero](docs/images/hero.png)
+
+*Designed in HTML and CSS from the real demo call. Not a screenshot.*
+
 ## Agency quickstart: a new client in five steps
 
 ```bash
@@ -21,6 +25,16 @@ cp business.example.json business.json
 3. **Try a call of your own.** `PYTHONPATH=src .venv/bin/python -m voice_receptionist_agent --config business.json "Hi, I want to book a haircut on Friday at 4pm"` prints the transcript, the intent, and the route, and saves the reply to `reply.txt`.
 4. **Turn on voice.** Record 5 to 20 seconds of the business voice, then run the same call with `--speak --voice-ref <voice.wav> --synth-script <path to voice-clone-pipeline scripts/synthesize.sh>`. The reply is rendered as spoken audio in that voice and saved as `reply.wav`. Without `--speak`, the reply stays as text.
 5. **Connect a phone line.** Put a telephony provider (for example Twilio) in front of this agent: speech-to-text in, this graph, text-to-speech out. The phone line is an integration step, not included. See "How to connect voice and a phone line" below.
+
+```mermaid
+flowchart TD
+    A[Clone the repo] --> B[Copy business.example.json to business.json]
+    B --> C[Edit the client facts]
+    C --> D[Run the demo]
+    D --> E[Try a call of your own]
+    E --> F[Turn on voice with --speak]
+    F --> G[Connect a phone line]
+```
 
 Your own `business.json` is gitignored, so a client config is never committed by accident. Only `business.example.json` is in the repo.
 
@@ -50,6 +64,41 @@ Try a call of your own:
 PYTHONPATH=src .venv/bin/python -m voice_receptionist_agent "Hi, my name is Ayesha, I want to book a cleaning on Saturday at 10am"
 ```
 
+Real output from `examples/demo.py --config business.example.json`:
+
+```
+Business: Bright Smile Dental Clinic
+============================================================
+Call 1: booking
+============================================================
+Receptionist: Hello, thank you for calling Bright Smile Dental Clinic. This is our AI receptionist. How can I help you today?
+Caller: Hi, my name is Ayesha, I want to book a cleaning on Saturday at 10am
+Receptionist: Thank you Ayesha. I have noted a cleaning booking for Saturday at 10am. Our team will call you back shortly to confirm the slot. Is there anything else I can help with?
+
+Outcome: intent=booking, route=Booking request, ready to confirm a slot
+Reply also saved to reply.txt for a voice service to speak.
+
+============================================================
+Call 2: price question
+============================================================
+Receptionist: Hello, thank you for calling Bright Smile Dental Clinic. This is our AI receptionist. How can I help you today?
+Caller: Hello, how much does a checkup cost?
+Receptionist: Thanks for asking. A checkup is 2,000 PKR and a cleaning is 3,500 PKR. Exact prices depend on the treatment. Would you like to book the checkup?
+
+Outcome: intent=pricing, route=Question answered from business facts
+Reply also saved to reply.txt for a voice service to speak.
+
+============================================================
+Call 3: human handoff
+============================================================
+Receptionist: Hello, thank you for calling Bright Smile Dental Clinic. This is our AI receptionist. How can I help you today?
+Caller: I need to speak to a real person about a refund, please
+Receptionist: Of course. I will connect you with a member of our team about that. You can also reach us at +92 300 0000000.
+
+Outcome: intent=human_handoff, route=Handed off to a human team member
+Reply also saved to reply.txt for a voice service to speak.
+```
+
 ## Configuration
 
 One file, `business.json`. Copy `business.example.json` and edit it. Every field is required.
@@ -75,9 +124,30 @@ For a second client, keep a separate config file per client and pass it with `--
 - Human handoff: greet, classify as handoff, connect the caller to a team member and give the business phone number.
 - Missing details: greet, classify, ask for the missing service or day, wait for the caller.
 
+```mermaid
+flowchart TD
+    A[Caller speaks] --> B[Greet]
+    B --> C[Classify intent]
+    C --> D[Collect details]
+    D --> E[Route the call]
+    E --> F[Draft the reply]
+    C -.-> G[Intents: booking, pricing, hours, human handoff, other]
+    E -.-> H[Routes: book, answer, clarify, human]
+```
+
 ## How it works
 
 A real LangGraph `StateGraph` in `src/voice_receptionist_agent/graph.py` runs five nodes: greet, classify, collect, route, draft. The compiled graph is built once per process and reused for every call. The intent classifier is rule-based by default and an optional LLM hook can be passed in; if the hook fails or returns something unknown, the rules take over. Routing lives in `router.py`, reply drafting in `replies.py`, config loading in `config.py`, and voice output in `voice.py`.
+
+![Voice receptionist call flow](docs/images/call-flow.png)
+
+*Designed in HTML and CSS from the real graph in graph.py. Not a screenshot.*
+
+## Architecture
+
+![Voice receptionist architecture](docs/images/architecture.png)
+
+*Designed in HTML and CSS from the real code and config. Not a screenshot.*
 
 ## How to connect voice and a phone line
 
@@ -142,6 +212,56 @@ Measured locally on this machine with 10,000 real calls, no live service involve
 - The intent classifier is keyword-based by default. It handles the common phrasings well and asks for clarification when it is unsure, but it is not a full speech understanding system.
 - It only knows the facts in the business config. It never invents prices, hours, or availability.
 - It does not store call recordings or caller data. Add your own storage if you need call logs.
+
+## Project structure
+
+```
+voice-receptionist-agent/
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   └── feature_request.md
+│   ├── workflows/
+│   │   └── ci.yml
+│   ├── dependabot.yml
+│   └── pull_request_template.md
+├── docs/
+│   └── images/
+│       ├── hero.png
+│       ├── call-flow.png
+│       ├── architecture.png
+│       └── src/
+│           ├── hero.html
+│           ├── call-flow.html
+│           └── architecture.html
+├── examples/
+│   └── demo.py
+├── src/
+│   └── voice_receptionist_agent/
+│       ├── __init__.py
+│       ├── __main__.py
+│       ├── config.py
+│       ├── graph.py
+│       ├── intents.py
+│       ├── models.py
+│       ├── replies.py
+│       ├── router.py
+│       └── voice.py
+├── tests/
+│   ├── test_agent.py
+│   ├── test_config.py
+│   └── test_voice.py
+├── .gitignore
+├── CONTRIBUTING.md
+├── LICENSE
+├── README.md
+├── SECURITY.md
+├── business.example.json
+├── pyproject.toml
+└── requirements.txt
+```
+
+The three README visuals are built by hand in HTML and CSS. Their sources live in `docs/images/src/`, and the PNGs are renders of those pages.
 
 ## Tests
 
