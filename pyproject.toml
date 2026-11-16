@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Saif Ullah" }]
-dependencies = ["langgraph==1.2.20"]
+dependencies = ["langgraph==1.2.21"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
