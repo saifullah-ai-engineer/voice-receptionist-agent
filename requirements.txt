@@ -1,2 +1,2 @@
-langgraph==1.2.20
+langgraph==1.2.24
 pytest
